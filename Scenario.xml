@@ -63,11 +63,9 @@
          </filter>
          <filter xpath="(not(get-property('spreadsheetKey') = '' or (not(string(get-property('spreadsheetKey'))))))">
             <then>
-               <googlespreadsheet.init>
-                  <accessToken>{$ctx:accessToken}</accessToken>
-                  <apiUrl>{$ctx:apiUrl}</apiUrl>
-                  <apiVersion>{$ctx:apiVersion}</apiVersion>
-               </googlespreadsheet.init>
+               <header name="Authorization"
+                       scope="transport"
+                       expression="fn:concat('Bearer ',get-property('uri.var.accessToken'))"/>
                <googlespreadsheet.getWorksheetByTitle>
                   <key>{$ctx:spreadsheetKey}</key>
                   <worksheetTitle>{$ctx:title}</worksheetTitle>
@@ -97,11 +95,9 @@
                <filter source="get-property('getWorksheetByTitleTotalResults') = 0"
                        regex="true">
                   <then>
-                     <googlespreadsheet.init>
-                        <accessToken>{$ctx:accessToken}</accessToken>
-                        <apiUrl>{$ctx:apiUrl}</apiUrl>
-                        <apiVersion>{$ctx:apiVersion}</apiVersion>
-                     </googlespreadsheet.init>
+                     <header name="Authorization"
+                             scope="transport"
+                             expression="fn:concat('Bearer ',get-property('uri.var.accessToken'))"/>
                      <googlespreadsheet.addWorksheet>
                         <key>{$ctx:spreadsheetKey}</key>
                         <title>{$ctx:title}</title>
@@ -124,11 +120,9 @@
                      </filter>
                   </then>
                   <else>
-                     <googlespreadsheet.init>
-                        <accessToken>{$ctx:accessToken}</accessToken>
-                        <apiUrl>{$ctx:apiUrl}</apiUrl>
-                        <apiVersion>{$ctx:apiVersion}</apiVersion>
-                     </googlespreadsheet.init>
+                     <header name="Authorization"
+                             scope="transport"
+                             expression="fn:concat('Bearer ',get-property('uri.var.accessToken'))"/>
                      <googlespreadsheet.listWorksheets>
                         <key>{$ctx:spreadsheetKey}</key>
                      </googlespreadsheet.listWorksheets>
@@ -156,11 +150,9 @@
                }</script>
                      <filter xpath="(not(get-property('worksheetId') = '' or (not(string(get-property('worksheetId'))))))">
                         <then>
-                           <googlespreadsheet.init>
-                              <accessToken>{$ctx:accessToken}</accessToken>
-                              <apiUrl>{$ctx:apiUrl}</apiUrl>
-                              <apiVersion>{$ctx:apiVersion}</apiVersion>
-                           </googlespreadsheet.init>
+                           <header name="Authorization"
+                                   scope="transport"
+                                   expression="fn:concat('Bearer ',get-property('uri.var.accessToken'))"/>
                            <googlespreadsheet.insertRows>
                               <key>{$ctx:spreadsheetKey}</key>
                               <worksheetId>{$ctx:worksheetId}</worksheetId>
@@ -210,4 +202,5 @@
       </outSequence>
    </target>
    <description/>
-</proxy>  
+</proxy>
+                                
