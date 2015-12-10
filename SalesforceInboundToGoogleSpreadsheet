@@ -1,0 +1,243 @@
+    <sequence name="reqsequence" onError="fault">
+        <property name="accessToken" scope="default" type="STRING" value="ya29.RgKWbmlzPdcHfpgMHf4rYyKxEIAfAfUgfzcKXWJS-RZtWesOdIIkEA-idawnX-70lRCv"/>
+        <property name="apiUrl" scope="default" type="STRING" value="https://spreadsheets.google.com"/>
+        <property name="apiVersion" scope="default" type="STRING" value="3.0"/>
+        <property name="spreadsheetTitle" scope="default" type="STRING" value="testSheet"/>
+        <property name="title" scope="default" type="STRING" value="worksheet Title"/>
+        <property name="rowCount" scope="default" type="STRING" value="3"/>
+        <property name="colCount" scope="default" type="STRING" value="3"/>
+        <property expression="json-eval($.data.sobject.Tweet__c)"
+            name="tweet" xmlns:ns="http://org.apache.synapse/xsd"/>
+        <property expression="json-eval($.data.sobject.Name__c)"
+            name="name" xmlns:ns="http://org.apache.synapse/xsd"/>
+        <property expression="json-eval($.data.sobject.TweetDate__c)"
+            name="tweetDate" xmlns:ns="http://org.apache.synapse/xsd"/>
+        <script language="js"><![CDATA[var name = mc.getProperty('name');
+                var tweet = mc.getProperty('tweet');
+                var tweetDate = mc.getProperty('tweetDate');
+                var fieldValues = "{";
+                fieldValues += '"name":';
+                if(name != null) {
+                    fieldValues += '"' + name + '"';
+                } else {
+                    fieldValues += '""';
+                }
+                fieldValues += ',"tweet":';
+                if(tweet != null) {
+                    fieldValues += '"' + tweet + '"';
+                } else {
+                    fieldValues += '""';
+                }
+                fieldValues += ',"date":';
+                if(tweetDate != null) {
+                    fieldValues += '"' + tweetDate + '"';
+                } else {
+                    fieldValues += '""';
+                }
+                fieldValues += "}";
+                mc.setProperty('fieldValues', fieldValues);]]></script>
+        <property expression="get-property('fieldValues')"
+            name="fieldValues" xmlns:ns="http://org.apache.synapse/xsd"/>
+        <googlespreadsheet.init>
+            <accessToken>{$ctx:accessToken}</accessToken>
+            <apiUrl>{$ctx:apiUrl}</apiUrl>
+            <apiVersion>{$ctx:apiVersion}</apiVersion>
+        </googlespreadsheet.init>
+        <googlespreadsheet.getSpreadsheetByTilte>
+            <spreadsheetTitle>{$ctx:spreadsheetTitle}</spreadsheetTitle>
+        </googlespreadsheet.getSpreadsheetByTilte>
+        <property expression="json-eval($.feed)"
+            name="getSpreadsheetByTilteFeed" xmlns:ns="http://org.apache.synapse/xsd"/>
+        <script language="js"><![CDATA[var feed = mc.getProperty('getSpreadsheetByTilteFeed');
+                if(feed != null) {
+                var feedObject = eval("("+feed+")");
+                var totalResults = feedObject["totalResults"];
+                entryObject = feedObject["entry"];
+                if(entryObject != null) {
+                    var isExists = false;
+                    if(totalResults == 1) {
+                        splitedId = entryObject["id"].split("/");
+                        var spreadsheetKey = splitedId[splitedId.length-1];
+                        mc.setProperty('spreadsheetKey', spreadsheetKey);
+                    }
+                    if(totalResults > 1) {
+                        for (i = 0; i < entryObject.length; i++) {
+                            if(entryObject[i]["title"]["$"] == mc.getProperty("spreadsheetTitle")) {
+                                isExists = true;
+                                splitedId = entryObject[i]["id"].split("/");
+                                var spreadsheetKey = splitedId[splitedId.length-1];
+                                mc.setProperty('spreadsheetKey', spreadsheetKey);
+                                break;
+                            }
+                        }
+                        if(!isExists) {
+                            totalResults = 0;
+                        }
+                    }
+                }
+                mc.setProperty('getSpreadsheetByTilteTotalResults', totalResults);
+                }]]></script>
+        <filter regex="true"
+            source="get-property('getSpreadsheetByTilteTotalResults') = 0" xmlns:ns="http://org.apache.synapse/xsd">
+            <then>
+                <property name="message" value="Error: The spreadsheet is not exist"/>
+                <sequence key="responsesequence"/>
+            </then>
+        </filter>
+        <filter xmlns:ns="http://org.apache.synapse/xsd" xpath="(not(get-property('spreadsheetKey') = '' or (not(string(get-property('spreadsheetKey'))))))">
+            <then>
+                <header
+                    expression="fn:concat('Bearer ',get-property('uri.var.accessToken'))"
+                    name="Authorization" scope="transport"/>
+                <googlespreadsheet.getWorksheetByTitle>
+                    <key>{$ctx:spreadsheetKey}</key>
+                    <worksheetTitle>{$ctx:title}</worksheetTitle>
+                </googlespreadsheet.getWorksheetByTitle>
+                <property expression="json-eval($.feed)" name="getWorksheetByTitleFeed"/>
+                <script language="js"><![CDATA[var feed = mc.getProperty('getWorksheetByTitleFeed');
+                        if(feed != null) {
+                        var feedObject = eval("("+feed+")");
+                        var totalResults = feedObject["totalResults"];
+                        entryObject = feedObject["entry"];
+                        if(feedObject["entry"] != null) {
+                            var isExists = false;
+                            if(totalResults > 1) {
+                                for (i = 0; i < entryObject.length; i++) {
+                                    if(entryObject[i]["title"]["$"] == mc.getProperty("title")) {
+                                        isExists = true;
+                                        break;
+                                    }
+                                }
+                                if(!isExists) {
+                                    totalResults = 0;
+                                }
+                            }
+                        }
+                        mc.setProperty('getWorksheetByTitleTotalResults', totalResults);
+                        }]]></script>
+                <filter regex="true" source="get-property('getWorksheetByTitleTotalResults') = 0">
+                    <then>
+                        <header
+                            expression="fn:concat('Bearer ',get-property('uri.var.accessToken'))"
+                            name="Authorization" scope="transport"/>
+                        <googlespreadsheet.addWorksheet>
+                            <key>{$ctx:spreadsheetKey}</key>
+                            <title>{$ctx:title}</title>
+                            <rowCount>{$ctx:rowCount}</rowCount>
+                            <colCount>{$ctx:colCount}</colCount>
+                        </googlespreadsheet.addWorksheet>
+                        <property expression="$axis2:HTTP_SC" name="addWorksheetStatusCode"/>
+                        <filter regex="true" source="get-property('addWorksheetStatusCode') != 201">
+                            <then>
+                                <property expression="//errors" name="message"/>
+                                <property
+                                    expression="fn:concat('Error: Unable to create the worksheet (', get-property('message'),')')" name="message"/>
+                                <sequence key="responsesequence"/>
+                            </then>
+                            <else>
+                                <property name="message" value="New spreadsheet is added. To insert data into a row, Please add a row with column names"/>
+                                <sequence key="responsesequence"/>
+                            </else>
+                        </filter>
+                    </then>
+                    <else>
+                        <header
+                            expression="fn:concat('Bearer ',get-property('uri.var.accessToken'))"
+                            name="Authorization" scope="transport"/>
+                        <googlespreadsheet.listWorksheets>
+                            <key>{$ctx:spreadsheetKey}</key>
+                        </googlespreadsheet.listWorksheets>
+                        <property expression="json-eval($.feed)" name="getWorksheetByTitleFeed"/>
+                        <script language="js"><![CDATA[var feed = mc.getProperty('getWorksheetByTitleFeed');
+                                if(feed != null) {
+                                    var feedObject = eval("("+feed+")");
+                                    var totalResults = feedObject["totalResults"];
+                                    entryObject = feedObject["entry"];
+                                    if(feedObject["entry"] != null) {
+                                        if(totalResults == 1) {
+                                            mc.setProperty('worksheetId', '1');
+                                        }
+                                        if(totalResults > 1) {
+                                            var i = 0;
+                                            for (i = 0; i < entryObject.length; i++) {
+                                                if(entryObject[i]["title"]["$"] == mc.getProperty("title")) {
+                                                    var wId = ("" + (i + 1)).replace(".0", "");
+                                                    mc.setProperty('worksheetId', wId);
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }]]></script>
+                        <filter xpath="(not(get-property('worksheetId') = '' or (not(string(get-property('worksheetId'))))))">
+                            <then>
+                                <header
+                                    expression="fn:concat('Bearer ',get-property('uri.var.accessToken'))"
+                                    name="Authorization" scope="transport"/>
+                                <googlespreadsheet.insertRows>
+                                    <key>{$ctx:spreadsheetKey}</key>
+                                    <worksheetId>{$ctx:worksheetId}</worksheetId>
+                                    <fieldValues>{$ctx:fieldValues}</fieldValues>
+                                </googlespreadsheet.insertRows>
+                                <property expression="$axis2:HTTP_SC" name="insertRowsStatusCode"/>
+                                <filter regex="true" source="get-property('insertRowsStatusCode') != 201">
+                                    <then>
+                                    <property expression="//errors" name="message"/>
+                                    <property
+                                    expression="fn:concat('Error: Unable to insert the row (', get-property('message'),')')" name="message"/>
+                                    <sequence key="responsesequence"/>
+                                    </then>
+                                    <else>
+                                    <log level="full"/>
+                                    <property name="message" value="Success: Successfully added the row"/>
+                                    <sequence key="responsesequence"/>
+                                    </else>
+                                </filter>
+                            </then>
+                        </filter>
+                    </else>
+                </filter>
+            </then>
+            <else>
+                <property name="message" value="Error: The key is null"/>
+                <sequence key="responsesequence"/>
+            </else>
+        </filter>
+    </sequence>
+    <sequence name="responsesequence">
+        <property name="messageType" scope="axis2" value="application/json"/>
+        <log level="full"/>
+        <payloadFactory media-type="json">
+            <format>
+                    {
+                        "Response":{
+                            "process":"enterDataToSpreadsheet",
+                            "activityResponse":"$1"
+                        }
+                    }
+                </format>
+            <args>
+                <arg evaluator="xml"
+                    expression="get-property('message')" xmlns:ns="http://org.apache.synapse/xsd"/>
+            </args>
+        </payloadFactory>
+    </sequence>
+    <inboundEndpoint
+        class="org.wso2.carbon.inbound.salesforce.poll.SalesforceStreamData"
+        name="SaleforceInboundEP" onError="fault" sequence="reqsequence" suspend="false">
+        <parameters>
+            <parameter name="connection.salesforce.readTimeout">120000</parameter>
+            <parameter name="connection.salesforce.connectionTimeout">20000</parameter>
+            <parameter name="interval">10</parameter>
+            <parameter name="sequential">true</parameter>
+            <parameter name="connection.salesforce.waitTime">10000</parameter>
+            <parameter name="connection.salesforce.packageName">cometd</parameter>
+            <parameter name="coordination">true</parameter>
+            <parameter name="connection.salesforce.password">0772596173kRxdeU33LxKbaZndxH92l2GLty</parameter>
+            <parameter name="connection.salesforce.soapApiVersion">22.0/</parameter>
+            <parameter name="connection.salesforce.salesforceObject">TweetsStatement</parameter>
+            <parameter name="connection.salesforce.userName">rajendramkathees7@gmail.com</parameter>
+            <parameter name="connection.salesforce.loginEndpoint">https://login.salesforce.com</parameter>
+            <parameter name="connection.salesforce.packageVersion">35.0</parameter>
+        </parameters>
+    </inboundEndpoint>
