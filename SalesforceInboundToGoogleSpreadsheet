@@ -188,7 +188,6 @@
                                     <sequence key="responsesequence"/>
                                     </then>
                                     <else>
-                                    <log level="full"/>
                                     <property name="message" value="Success: Successfully added the row"/>
                                     <sequence key="responsesequence"/>
                                     </else>
@@ -206,7 +205,6 @@
     </sequence>
     <sequence name="responsesequence">
         <property name="messageType" scope="axis2" value="application/json"/>
-        <log level="full"/>
         <payloadFactory media-type="json">
             <format>
                     {
