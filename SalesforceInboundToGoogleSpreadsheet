@@ -1,5 +1,5 @@
     <sequence name="reqsequence" onError="fault">
-        <property name="accessToken" scope="default" type="STRING" value="ya29.RgKWbmlzPdcHfpgMHf4rYyKxEIAfAfUgfzcKXWJS-RZtWesOdIIkEA-idawnX-70lRCv"/>
+        <property name="accessToken" scope="default" type="STRING" value="ACCESS_TOKEN"/>
         <property name="apiUrl" scope="default" type="STRING" value="https://spreadsheets.google.com"/>
         <property name="apiVersion" scope="default" type="STRING" value="3.0"/>
         <property name="spreadsheetTitle" scope="default" type="STRING" value="testSheet"/>
